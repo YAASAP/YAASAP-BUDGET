@@ -1,0 +1,82 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><title>Budget Clair</title><style>:root{--bg:#F4F6FB;--card:#fff;--ink:#1c2233;--mute:#7a8399;--pri:#2E7D5B;--ok:#1FA66A;--bad:#E5484D;--line:#E4E8F2}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-user-select:none;user-select:none}
+#app{height:100%;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+#main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 18px 28px}
+h1{font-size:28px;margin:6px 0 4px;letter-spacing:-.5px}h2{font-size:18px;margin:20px 0 10px}
+.sub{color:var(--mute);font-size:14.5px;margin:0 0 14px}
+.card{background:var(--card);border-radius:18px;padding:14px 16px;margin-bottom:12px;box-shadow:0 2px 10px rgba(30,40,80,.07)}
+.row{display:flex;align-items:center;gap:10px}.sp{flex:1}
+.big{font-size:34px;font-weight:800;letter-spacing:-1px}.mute{color:var(--mute);font-size:13px}
+.pos{color:var(--ok)}.neg{color:var(--bad)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.bar{height:9px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--pri);border-radius:99px}
+input,select{width:100%;padding:13px 14px;border-radius:13px;border:1.5px solid var(--line);font-size:16px;background:#fff;margin:5px 0;-webkit-user-select:text;user-select:text;color:var(--ink)}
+.btn{display:block;width:100%;border:0;border-radius:14px;padding:14px;font-size:17px;font-weight:700;color:#fff;background:var(--pri);margin:10px 0}
+.btn.alt{background:#fff;color:var(--pri);border:2px solid var(--pri)}.btn.sm{display:inline-block;width:auto;padding:8px 14px;font-size:14px;margin:0}
+.seg{display:flex;background:var(--line);border-radius:12px;padding:3px;margin:6px 0}.seg div{flex:1;text-align:center;padding:9px;border-radius:10px;font-weight:600;font-size:15px;color:var(--mute)}.seg .on{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.item:last-child{border:0}
+.ic{width:42px;height:42px;border-radius:13px;background:var(--line);display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.del{color:var(--bad);font-size:20px;padding:6px}
+.chip{display:inline-block;padding:4px 10px;border-radius:99px;font-size:12px;font-weight:700;background:var(--line);color:var(--mute)}
+.chip.g{background:#dff5ea;color:var(--ok)}.chip.o{background:#fff0d6;color:#c47a00}.chip.r{background:#fde3e4;color:var(--bad)}
+nav{display:flex;border-top:1px solid var(--line);background:#fff;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+nav button{flex:1;border:0;background:none;font-size:11px;color:var(--mute);padding:4px 0;font-weight:600}nav button span{display:block;font-size:22px}nav button.on{color:var(--pri)}
+.empty{text-align:center;color:var(--mute);padding:26px 10px;font-size:15px}
+.note{font-size:12.5px;color:var(--mute);line-height:1.45}
+</style></head><body><div id="app"><div id="main"></div><nav id="nav"></nav></div><script>var TABS=[['sum','📊','Résumé'],['add','➕','Ajouter'],['hist','🧾','Historique'],['bud','🎯','Budgets'],['info','ℹ️','Infos']];var DB={};var KEY='budget_save';
+try{var _s=localStorage.getItem(KEY);if(_s)DB=JSON.parse(_s)||{};}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}}
+function $(id){return document.getElementById(id)}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function today(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function eur(n){return (Math.round(n*100)/100).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'}
+var M=document.getElementById('main'),NAV=document.getElementById('nav'),tab=TABS[0][0];
+function setTab(t){tab=t;render();M.scrollTop=0}
+function drawNav(){NAV.innerHTML=TABS.map(function(x){return '<button class="'+(tab==x[0]?'on':'')+'" onclick="setTab(\''+x[0]+'\')"><span>'+x[1]+'</span>'+x[2]+'</button>'}).join('')}
+function num(v){return parseFloat(String(v).replace(',','.'))||0}
+var CATS=[['🛒','Courses'],['🏠','Logement'],['🚗','Transport'],['🍽️','Restaurants'],['🎬','Loisirs'],['💊','Santé'],['🛍️','Shopping'],['📱','Abonnements'],['💡','Factures'],['📦','Autre']];
+var INC=[['💼','Salaire'],['🎁','Cadeau'],['📈','Placement'],['💰','Autre revenu']];
+var PREM=false,PRICE='',PMSG='',FREE=20;
+function nat(a){try{return window.webkit.messageHandlers.premium.postMessage({action:a})}catch(e){return Promise.reject(e)}}
+function pstate(r){if(r){PREM=!!r.premium;if(r.price)PRICE=r.price;PMSG=r.error||''}render()}
+function pact(a){PMSG='Un instant…';render();nat(a).then(pstate,function(){PMSG='Achat indisponible ici.';render()})}
+function paywall(t){return '<div class="card" style="text-align:center"><div style="font-size:44px">⭐</div><h2 style="margin:6px 0">Budget Clair Premium</h2><p class="note">'+t+'</p><ul style="text-align:left;line-height:1.7;padding-left:22px"><li>Opérations illimitées</li><li>Plafonds par catégorie et alertes</li><li>Achat unique, sans abonnement</li></ul><button class="btn" onclick="pact(\'buy\')">Débloquer Premium'+(PRICE?' · '+PRICE:'')+'</button><button class="btn alt" style="margin-top:8px" onclick="pact(\'restore\')">Restaurer mes achats</button><div class="note" style="margin-top:8px">'+esc(PMSG)+'</div></div>'}
+DB.tx=DB.tx||[];DB.bud=DB.bud||{};DB.mo=DB.mo||today().slice(0,7);var form={type:'dep'};
+function monthLabel(m){var p=m.split('-');return ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'][+p[1]-1]+' '+p[0]}
+function shift(d){var p=DB.mo.split('-'),y=+p[0],m=+p[1]+d;if(m<1){m=12;y--}if(m>12){m=1;y++}DB.mo=y+'-'+('0'+m).slice(-2);save();render()}
+function mtx(){return DB.tx.filter(function(t){return t.d.slice(0,7)==DB.mo})}
+function tot(a,ty){return a.filter(function(t){return t.ty==ty}).reduce(function(s,t){return s+t.a},0)}
+function icon(c){var all=CATS.concat(INC);for(var i=0;i<all.length;i++)if(all[i][1]==c)return all[i][0];return '📦'}
+function head(){return '<div class="row"><div class="mute" style="font-size:22px" onclick="shift(-1)">‹</div><div class="sp" style="text-align:center;font-weight:700;text-transform:capitalize">'+monthLabel(DB.mo)+'</div><div class="mute" style="font-size:22px" onclick="shift(1)">›</div></div>'}
+function render(){drawNav();var h='';
+ if(tab=='sum'){var a=mtx(),r=tot(a,'rev'),d=tot(a,'dep'),s=r-d;
+  h+='<h1>Budget Clair</h1>'+head();
+  h+='<div class="card"><div class="mute">Solde du mois</div><div class="big '+(s>=0?'pos':'neg')+'">'+eur(s)+'</div><div class="row" style="margin-top:8px"><div class="sp"><div class="mute">Revenus</div><b class="pos">'+eur(r)+'</b></div><div class="sp"><div class="mute">Dépenses</div><b class="neg">'+eur(d)+'</b></div></div></div>';
+  var by={};a.filter(function(t){return t.ty=='dep'}).forEach(function(t){by[t.c]=(by[t.c]||0)+t.a});
+  var ks=Object.keys(by).sort(function(x,y){return by[y]-by[x]});
+  h+='<h2>Dépenses par catégorie</h2>';
+  h+=ks.length?'<div class="card">'+ks.map(function(k){var p=d?by[k]/d*100:0;return '<div style="margin-bottom:12px"><div class="row"><span>'+icon(k)+' '+esc(k)+'</span><span class="sp"></span><b>'+eur(by[k])+'</b></div><div class="bar"><i style="width:'+p+'%"></i></div></div>'}).join('')+'</div>':'<div class="card empty">Aucune dépense ce mois-ci.</div>';
+ }else if(tab=='add'){
+  h+='<h1>Ajouter</h1><div class="seg"><div class="'+(form.type=='dep'?'on':'')+'" onclick="form.type=\'dep\';render()">Dépense</div><div class="'+(form.type=='rev'?'on':'')+'" onclick="form.type=\'rev\';render()">Revenu</div></div>';
+  h+='<input id="fa" inputmode="decimal" placeholder="Montant (€)"><select id="fc">'+(form.type=='dep'?CATS:INC).map(function(c){return '<option>'+c[1]+'</option>'}).join('')+'</select><input id="fn" placeholder="Note (facultatif)" maxlength="60"><input id="fd" type="date" value="'+today()+'"><button class="btn" onclick="addTx()">Enregistrer</button><div id="msg" class="note"></div>';
+ }else if(tab=='hist'){
+  h+='<h1>Historique</h1>'+head();var a=mtx().sort(function(x,y){return y.d<x.d?-1:1});
+  h+=a.length?'<div class="card">'+a.map(function(t){return '<div class="item"><div class="ic">'+icon(t.c)+'</div><div class="sp"><b>'+esc(t.c)+'</b><div class="mute">'+t.d.split('-').reverse().join('/')+(t.n?' · '+esc(t.n):'')+'</div></div><b class="'+(t.ty=='rev'?'pos':'neg')+'">'+(t.ty=='rev'?'+':'−')+eur(t.a)+'</b><div class="del" onclick="delTx(\''+t.id+'\')">✕</div></div>'}).join('')+'</div>':'<div class="card empty">Rien à afficher.</div>';
+ }else if(tab=='bud'){
+  if(!PREM){h+='<h1>Budgets</h1>'+paywall('Fixez un plafond mensuel par catégorie et suivez-le en temps réel.');M.innerHTML=h;return}
+  h+='<h1>Budgets</h1><p class="sub">Fixez un plafond par catégorie pour '+monthLabel(DB.mo)+'.</p>'+head();var a=mtx();
+  h+='<div style="height:10px"></div>'+CATS.map(function(c){var sp=a.filter(function(t){return t.ty=='dep'&&t.c==c[1]}).reduce(function(s,t){return s+t.a},0),b=DB.bud[c[1]]||0,p=b?Math.min(sp/b*100,100):0;
+   return '<div class="card"><div class="row"><span>'+c[0]+' <b>'+c[1]+'</b></span><span class="sp"></span><span class="mute">'+eur(sp)+(b?' / '+eur(b):'')+'</span></div>'+(b?'<div class="bar"><i style="width:'+p+'%;background:'+(sp>b?'var(--bad)':sp>b*.8?'#e8a317':'var(--pri)')+'"></i></div>':'')+'<input inputmode="decimal" placeholder="Plafond mensuel (€)" value="'+(b||'')+'" onchange="setBud(\''+c[1]+'\',this.value)"></div>'}).join('');
+ }else{
+  h+='<h1>À propos</h1>'+(PREM?'<div class="card"><b>⭐ Premium actif</b><div class="note">Merci pour votre soutien.</div></div>':paywall('Version gratuite : '+FREE+' opérations par mois.'))+'<div class="card note">Budget Clair garde vos opérations uniquement sur cet iPhone. Aucun compte, aucune connexion bancaire, aucune donnée envoyée. L\'app ne fournit pas de conseil financier.</div><button class="btn alt" onclick="if(this.dataset.s){DB.tx=[];DB.bud={};save();render()}else{this.dataset.s=1;this.textContent=\'Touchez encore pour tout effacer\'}">Effacer toutes mes données</button>';}
+ M.innerHTML=h}
+function addTx(){var a=num($('fa').value);if(a<=0){$('msg').textContent='Entrez un montant supérieur à 0.';return}
+ if(!PREM&&mtx().length>=FREE){tab='bud';render();return}
+ DB.tx.push({id:uid(),ty:form.type,a:a,c:$('fc').value,n:$('fn').value.trim(),d:$('fd').value||today()});DB.mo=($('fd').value||today()).slice(0,7);save();tab='sum';render()}
+function delTx(id){DB.tx=DB.tx.filter(function(t){return t.id!=id});save();render()}
+function setBud(c,v){var n=num(v);if(n>0)DB.bud[c]=n;else delete DB.bud[c];save();render()}
+render();
+nat('status').then(pstate,function(){});
+</script></body></html>

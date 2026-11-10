@@ -1,0 +1,33 @@
+name: Budget
+options:
+  bundleIdPrefix: com.yaasap
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: "ZQ5V9WK977"   # Team ID Apple Developer (Yaasap), déjà utilisé par FICO EXPERT
+targets:
+  Budget:
+    type: application
+    platform: iOS
+    sources:
+      - path: Budget
+        excludes:
+          - App
+      - path: Budget/App
+        type: folder          # copié tel quel dans l'app : App/index.html
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yaasap.budget
+        PRODUCT_NAME: "Budget"
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "Budget Clair"
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
