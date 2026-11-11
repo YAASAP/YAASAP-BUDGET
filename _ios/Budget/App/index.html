@@ -50,6 +50,31 @@ function mtx(){return DB.tx.filter(function(t){return t.d.slice(0,7)==DB.mo})}
 function tot(a,ty){return a.filter(function(t){return t.ty==ty}).reduce(function(s,t){return s+t.a},0)}
 function icon(c){var all=CATS.concat(INC);for(var i=0;i<all.length;i++)if(all[i][1]==c)return all[i][0];return '📦'}
 function head(){return '<div class="row"><div class="mute" style="font-size:22px" onclick="shift(-1)">‹</div><div class="sp" style="text-align:center;font-weight:700;text-transform:capitalize">'+monthLabel(DB.mo)+'</div><div class="mute" style="font-size:22px" onclick="shift(1)">›</div></div>'}
+
+var TIPS={'Restaurants':[.25,'Cuisinez 2 repas de plus par semaine et préparez votre déjeuner : c\'est souvent le poste le plus facile à réduire.'],
+'Loisirs':[.2,'Cherchez des alternatives gratuites ou à tarif réduit (médiathèque, sorties en journée, places à l\'avance).'],
+'Shopping':[.25,'Règle des 48 h : attendez avant tout achat non essentiel, et comparez avant d\'acheter.'],
+'Abonnements':[.2,'Passez vos abonnements en revue : résiliez ceux que vous n\'utilisez pas, ou partagez-les en famille.'],
+'Courses':[.1,'Faites une liste avant d\'y aller, privilégiez les marques distributeur et limitez le gaspillage.'],
+'Transport':[.1,'Regroupez vos trajets, comparez les carburants et envisagez le covoiturage ou les transports en commun.'],
+'Factures':[.08,'Comparez régulièrement énergie, box internet, mobile et assurances : un simple changement peut faire baisser la facture.'],
+'Santé':[0,'Vérifiez votre mutuelle et demandez les génériques : ils sont remboursés au même niveau.']};
+function prevMonth(){var p=DB.mo.split('-'),y=+p[0],m=+p[1]-1;if(m<1){m=12;y--}return y+'-'+('0'+m).slice(-2)}
+function tipsHtml(by,d,r){
+ var out=[],pot=0;
+ Object.keys(by).forEach(function(k){var t=TIPS[k];if(!t)return;var g=by[k]*t[0];pot+=g;out.push({k:k,g:g,t:t[1],v:by[k]})});
+ out.sort(function(x,y){return y.g-x.g||y.v-x.v});
+ var pm=prevMonth(),pb={};DB.tx.filter(function(t){return t.ty=='dep'&&t.d.slice(0,7)==pm}).forEach(function(t){pb[t.c]=(pb[t.c]||0)+t.a});
+ var up=[];Object.keys(by).forEach(function(k){var o=pb[k]||0;if(o>0&&by[k]>o*1.2&&by[k]-o>=20)up.push('<div class="item"><div class="ic">📈</div><div class="sp"><b>'+icon(k)+' '+esc(k)+' : +'+Math.round((by[k]/o-1)*100)+' %</b><div class="mute">'+eur(by[k]-o)+' de plus que le mois dernier.</div></div></div>')});
+ var h='<h2>💡 Pistes d\'économies</h2><div class="card">';
+ if(!d){return h+'<div class="empty">Ajoutez vos dépenses pour voir où économiser.</div></div>'}
+ if(r>0){var rate=(r-d)/r*100;h+='<div class="item"><div class="ic">'+(rate>=10?'✅':'⚠️')+'</div><div class="sp"><b>Épargne du mois : '+Math.round(rate)+' %</b><div class="mute">'+(r<d?'Vos dépenses dépassent vos revenus : commencez par les postes ci-dessous.':rate<10?'Un repère courant est de mettre de côté 10 à 20 % de ses revenus.':'Bon rythme, continuez ainsi.')+'</div></div></div>'}
+ else if(d>0)h+='<div class="note" style="margin-bottom:8px">Ajoutez vos revenus pour calculer votre taux d\'épargne.</div>';
+ if(r>0&&(by['Logement']||0)>r*.4)h+='<div class="item"><div class="ic">🏠</div><div class="sp"><b>Logement : '+Math.round(by['Logement']/r*100)+' % des revenus</b><div class="mute">C\'est élevé : renégociez assurance, charges ou crédit si possible.</div></div></div>';
+ h+=up.join('');
+ h+=out.slice(0,4).map(function(o){return '<div class="item"><div class="ic">'+icon(o.k)+'</div><div class="sp"><b>'+esc(o.k)+(o.g>=1?' · jusqu\'à '+eur(o.g)+'/mois':'')+'</b><div class="mute">'+o.t+'</div></div></div>'}).join('');
+ if(pot>=1)h+='<div style="margin-top:10px"><b class="pos">Potentiel estimé : ~'+eur(pot)+'/mois</b> <span class="mute">(≈ '+eur(pot*12)+'/an)</span></div>';
+ return h+'<div class="note" style="margin-top:8px">Estimations indicatives calculées sur vos propres dépenses ; ce ne sont pas des conseils financiers.</div></div>'}
 function render(){drawNav();var h='';
  if(tab=='sum'){var a=mtx(),r=tot(a,'rev'),d=tot(a,'dep'),s=r-d;
   h+='<h1>Budget Clair</h1>'+head();
@@ -58,6 +83,7 @@ function render(){drawNav();var h='';
   var ks=Object.keys(by).sort(function(x,y){return by[y]-by[x]});
   h+='<h2>Dépenses par catégorie</h2>';
   h+=ks.length?'<div class="card">'+ks.map(function(k){var p=d?by[k]/d*100:0;return '<div style="margin-bottom:12px"><div class="row"><span>'+icon(k)+' '+esc(k)+'</span><span class="sp"></span><b>'+eur(by[k])+'</b></div><div class="bar"><i style="width:'+p+'%"></i></div></div>'}).join('')+'</div>':'<div class="card empty">Aucune dépense ce mois-ci.</div>';
+  h+=tipsHtml(by,d,r);
  }else if(tab=='add'){
   h+='<h1>Ajouter</h1><div class="seg"><div class="'+(form.type=='dep'?'on':'')+'" onclick="form.type=\'dep\';render()">Dépense</div><div class="'+(form.type=='rev'?'on':'')+'" onclick="form.type=\'rev\';render()">Revenu</div></div>';
   h+='<input id="fa" inputmode="decimal" placeholder="Montant (€)"><select id="fc">'+(form.type=='dep'?CATS:INC).map(function(c){return '<option>'+c[1]+'</option>'}).join('')+'</select><input id="fn" placeholder="Note (facultatif)" maxlength="60"><input id="fd" type="date" value="'+today()+'"><button class="btn" onclick="addTx()">Enregistrer</button><div id="msg" class="note"></div>';
